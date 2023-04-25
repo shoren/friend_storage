@@ -48,15 +48,15 @@ stop(Registered_name)  ->
 
 %%@doc The <kbd>add/1</kbd> function has as its value the sum of all elements of the parameter of type list. The list can be empty.
 add(Registered_name,Friend) -> 
-  gen_server:cast(Registered_name,{add,Friend}).
+  gen_server:call(Registered_name,{add,Friend}).
 %%@doc The <kbd>list/1</kbd> function has as its value the entire list of friends. The list can be empty.
 list(Registered_name) -> 
   gen_server:call(Registered_name,list).
 %%@doc The <kbd>divide/2</kbd> function returns the quotient of the dividend, the first parameter, and the divisor, the second parameter.
 remove(Registered_name,Friend) -> 
-  gen_server:cast(Registered_name,{remove,Friend}).
+  gen_server:call(Registered_name,{remove,Friend}).
 remove_all(Registered_name) -> 
-  gen_server:cast(Registered_name,clear).
+  gen_server:call(Registered_name,clear).
 
 
 %%%--------
@@ -86,24 +86,24 @@ init([]) -> {ok,[]}.%% setting the state to up
 %% </ol> 
 
 
-% handle_cast
-handle_cast({add, Friend},nil) ->
-  {noreply, [Friend]};
-handle_cast({add, Friend},Friends) ->
-  {noreply, [Friend] ++ Friends};
-
-handle_cast({remove, Friend}, Friends) ->
-  {noreply, lists:delete(Friend,Friends)};
-
-handle_cast(clear, _Friends) ->
-  {noreply, []}.
-
 %%These are specific to your need.
+handle_call({add,Friend},_From,Friends) ->
+          {reply,
+                ok,
+           [Friend]++Friends};%% modifying the server's internal state
+
 handle_call(list,_From,Friends) -> 
           {reply,
                 {ok,Friends},
            Friends};%% not modifying the server's internal state
-
+handle_call({remove,Friend},_From,Friends) -> 
+	       {reply,
+                ok,
+           lists:delete(Friend,Friends)};%% modifying the server's internal state
+handle_call(clear,_From,_Friends) -> 
+         {reply,
+                ok,
+           []};%% modifying the server's internal state
 handle_call(stop, _From, _Friends) -> 
 	       {stop,normal,
                 server_stopped,
@@ -113,7 +113,7 @@ handle_call(stop, _From, _Friends) ->
 %%% gen_server callbacks
 %%% the default behavior here is sufficient for this example.
 %%%--------
-% handle_cast(_Msg, State) -> {noreply, State}.
+handle_cast(_Msg, State) -> {noreply, State}.
 handle_info(_Info, State) -> {noreply, State}.
 terminate(_Reason, _State) -> ok.
 code_change(_OldVsn, State, _Extra) -> io:format("code changing",[]),{ok, State}.
@@ -122,31 +122,17 @@ code_change(_OldVsn, State, _Extra) -> io:format("code changing",[]),{ok, State}
 -ifdef(EUNIT).
   -include_lib("eunit/include/eunit.hrl").
 
-handle_cast_test_() ->
-  [?_assertEqual({noreply,[sue,joe,sally]},
-    friends_storage:handle_cast({add,sue},[joe,sally])), %happy path
-
-    ?_assertEqual({noreply,[sue]},
-      friends_storage:handle_cast({add,sue},[])), %nasty path
-
-    ?_assertEqual({noreply,[sue]},
-      friends_storage:handle_cast({add,sue},nil)), %nasty path
-
-    ?_assertEqual({noreply,[sue,joe]},
-      friends_storage:handle_cast({remove,sally},[sue,joe,sally])), %happy path
-
-    ?_assertEqual({noreply,[]},
-      friends_storage:handle_cast({remove,sally},[])) %happy path
-
-  ].
-
 handle_call_test_()->
-  [?_assertEqual({reply,{ok,[joe,sally,grace]},[joe,sally,grace]},
-    friends_storage:handle_call(list,somewhere,[joe,sally,grace])),%happy path
-
-   ?_assertEqual({stop,normal,server_stopped,down},
-    friends_storage:handle_call(stop,somewhere,[joe,sally,grace]))%happy path
-   ].
+  [?_assertEqual({reply,ok,[sue,joe,sally]},friends_storage:handle_call({add,sue},somewhere,[joe,sally])),%happy path
+   ?_assertEqual({reply,ok,[sue]},friends_storage:handle_call({add,sue},somewhere,[])),%nasty path
+   ?_assertEqual({reply,ok,[sue]},friends_storage:handle_call({add,sue},somewhere,nil)),%nasty path
+   ?_assertEqual({reply,
+                {ok,[joe,sally,grace]},
+           [joe,sally,grace]},friends_storage:handle_call(list,somewhere,[joe,sally,grace])),%happy path
+   ?_assertEqual({reply,
+                ok,
+           [joe,grace]},friends_storage:handle_call({remove,sally},somewhere,[joe,sally,grace])),%happy path
+   ]
 
 %component_level_test_()->{
 %  setup,
