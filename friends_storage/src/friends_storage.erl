@@ -89,18 +89,11 @@ init([]) -> {ok,[]}.%% setting the state to up
 % handle_cast
 handle_cast({add, Friend},nil) ->
   {noreply, [Friend]};
-
-
 handle_cast({add, Friend},Friends) ->
   {noreply, [Friend] ++ Friends};
 
-
-
-
 handle_cast({remove, Friend}, Friends) ->
   {noreply, lists:delete(Friend,Friends)};
-
-
 
 handle_cast(clear, _Friends) ->
   {noreply, []}.
@@ -150,7 +143,7 @@ handle_cast_test_() ->
 handle_call_test_()->
   [?_assertEqual({reply,{ok,[joe,sally,grace]},[joe,sally,grace]},
     friends_storage:handle_call(list,somewhere,[joe,sally,grace])),%happy path
-  
+
    ?_assertEqual({stop,normal,server_stopped,down},
     friends_storage:handle_call(stop,somewhere,[joe,sally,grace]))%happy path
    ].
